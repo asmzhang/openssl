@@ -35,6 +35,8 @@ jobs:
             target: android-arm64
           - abi: armeabi-v7a
             target: android-arm
+          - abi: x86
+            target: android-x86
           - abi: x86_64
             target: android-x86_64
 

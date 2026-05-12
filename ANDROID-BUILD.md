@@ -8,6 +8,7 @@ The workflow `.github/workflows/android-prebuilt.yml` builds these ABIs:
 
 - `arm64-v8a`
 - `armeabi-v7a`
+- `x86`
 - `x86_64`
 
 By default it targets Android API `21` and produces upload artifacts that contain:
@@ -15,6 +16,8 @@ By default it targets Android API `21` and produces upload artifacts that contai
 - `include/`
 - `lib/`
 - `ssl/`
+
+When both switches keep their default values, `lib/` contains both shared and static libraries.
 
 ## How to run
 
