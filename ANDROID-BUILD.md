@@ -23,10 +23,12 @@ When both switches keep their default values, `lib/` contains both shared and st
 
 1. Push branch `android` to your GitHub repository.
 2. Open `Actions` -> `Android Prebuilt`.
-3. Run the workflow manually, or trigger it by pushing to `android`.
+3. Run the workflow manually.
 
 ## Notes
 
 - Local Windows builds are not required for this path.
 - GitHub Ubuntu runners already provide `perl`, which OpenSSL needs for `Configure`.
 - The workflow downloads Android NDK `r26d` automatically.
+- The workflow builds in two stages: `arm64-v8a` and `armeabi-v7a` first, then `x86` and `x86_64`.
+- Workflow concurrency is enabled, so a newer run on the same branch cancels the older in-progress run.
