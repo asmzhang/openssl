@@ -1,0 +1,102 @@
+name: Android Prebuilt
+
+on:
+  workflow_dispatch:
+    inputs:
+      api_level:
+        description: Android API level used for the build
+        required: false
+        default: "21"
+      build_shared:
+        description: Build shared libraries
+        required: false
+        type: boolean
+        default: true
+      build_static:
+        description: Build static libraries
+        required: false
+        type: boolean
+        default: true
+  push:
+    branches:
+      - android
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - abi: arm64-v8a
+            target: android-arm64
+          - abi: armeabi-v7a
+            target: android-arm
+          - abi: x86_64
+            target: android-x86_64
+
+    env:
+      API_LEVEL: ${{ github.event.inputs.api_level || '21' }}
+
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+
+      - name: Set up Android NDK
+        uses: nttld/setup-ndk@v1
+        with:
+          ndk-version: r26d
+
+      - name: Build OpenSSL for Android
+        shell: bash
+        env:
+          ABI: ${{ matrix.abi }}
+          TARGET: ${{ matrix.target }}
+          BUILD_SHARED: ${{ github.event.inputs.build_shared || 'true' }}
+          BUILD_STATIC: ${{ github.event.inputs.build_static || 'true' }}
+        run: |
+          set -euxo pipefail
+
+          export ANDROID_NDK_ROOT="${ANDROID_NDK_HOME}"
+          export PATH="${ANDROID_NDK_ROOT}/toolchains/llvm/prebuilt/linux-x86_64/bin:${PATH}"
+
+          CONFIG_OPTS=(
+            "${TARGET}"
+            "-D__ANDROID_API__=${API_LEVEL}"
+            "--prefix=${GITHUB_WORKSPACE}/out/${ABI}"
+            "--openssldir=${GITHUB_WORKSPACE}/out/${ABI}/ssl"
+          )
+
+          if [ "${BUILD_SHARED}" != "true" ]; then
+            CONFIG_OPTS+=("no-shared")
+          fi
+
+          if [ "${BUILD_STATIC}" != "true" ]; then
+            CONFIG_OPTS+=("no-static")
+          fi
+
+          make clean || true
+          perl ./Configure "${CONFIG_OPTS[@]}"
+          make -j"$(nproc)"
+          make install_sw
+
+      - name: Package artifact
+        shell: bash
+        env:
+          ABI: ${{ matrix.abi }}
+        run: |
+          set -euxo pipefail
+          mkdir -p dist
+          cd out
+          zip -r "../dist/openssl-${ABI}-android-api${API_LEVEL}.zip" "${ABI}"
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: openssl-${{ matrix.abi }}-android-api${{ env.API_LEVEL }}
+          path: dist/openssl-${{ matrix.abi }}-android-api${{ env.API_LEVEL }}.zip
+          if-no-files-found: error
